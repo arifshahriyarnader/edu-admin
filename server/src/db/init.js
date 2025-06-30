@@ -19,5 +19,6 @@ const excuteSqlFile = async (filename) => {
 
 const createTables = async () => {
   await excuteSqlFile("users.sql");
+  await excuteSqlFile("teachers.sql");
 };
 export default createTables;
