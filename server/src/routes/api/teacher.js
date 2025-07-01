@@ -24,6 +24,32 @@ router.post("/create-teacher", authenticateToken, async (req, res) => {
   }
 });
 
+router.get("/all-teachers", authenticateToken, async (req, res) => {
+  let page = parseInt(req.query.page) || 1;
+  let limit = parseInt(req.query.limit) || 5;
+  let offset = (page - 1) * limit;
+  try {
+    const result = await pool.query(
+      `SELECT * FROM teachers ORDER BY id DESC LIMIT $1 OFFSET $2`,
+      [limit, offset]
+    );
+    const countTeachers = await pool.query("SELECT COUNT(*) FROM teachers");
+    const total = parseInt(countTeachers.rows[0].count);
+    const totalPages = Math.ceil(total / limit);
+
+    res.status(200).json({
+      page,
+      limit,
+      total,
+      totalPages,
+      teachers: result.rows,
+    });
+  } catch (error) {
+    console.error("Error in fetching all teachers:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 router.get("/:id", authenticateToken, async (req, res) => {
   const { id } = req.params;
   try {
