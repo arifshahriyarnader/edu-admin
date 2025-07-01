@@ -93,4 +93,25 @@ router.put("/:id", authenticateToken, async (req, res) => {
   }
 });
 
+router.delete("/:id", authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query(
+      "DELETE FROM teachers WHERE id = $1 RETURNING *",
+      [id]
+    );
+    const deleteTeacher = result.rows[0];
+    if (!deleteTeacher) {
+      return res.status(404).json({ message: "Teacher not found" });
+    }
+    res.status(200).json({
+      message: "Teacher deleted successfully",
+      teacher: deleteTeacher,
+    });
+  } catch (error) {
+    console.error("Error in deleting teacher:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 export default router;
