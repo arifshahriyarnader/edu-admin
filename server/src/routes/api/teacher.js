@@ -67,4 +67,30 @@ router.get("/:id", authenticateToken, async (req, res) => {
   }
 });
 
+router.put("/:id", authenticateToken, async (req, res) => {
+  const { id } = req.params;
+  const { name, email, department, salary, mobile } = req.body;
+
+  try {
+    const result = await pool.query(
+      `UPDATE teachers 
+       SET name = $1, email = $2, department = $3, salary = $4, mobile = $5, updated_at = CURRENT_TIMESTAMP
+       WHERE id = $6
+       RETURNING *`,
+      [name, email, department, salary, mobile, id]
+    );
+    const updatedTeacher = result.rows[0];
+    if (!updatedTeacher) {
+      return res.status(404).json({ message: "Teacher not found" });
+    }
+    res.status(200).json({
+      message: "Teacher updated successfully",
+      teacher: updatedTeacher,
+    });
+  } catch (error) {
+    console.error("Error in updating teacher:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 export default router;
