@@ -1,25 +1,33 @@
 import express from "express";
-import bycrypt from "bcrypt";
+import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import { userValidation } from "../../validations/userValidation.js";
 import { pool } from "../../db/connection.js";
 
 const router = express.Router();
 
-// Register a new user
 router.post("/register", async (req, res) => {
+  const parsed = userValidation.safeParse(req.body);
+
+  if (!parsed.success) {
+    const formattedErrors = parsed.error.issues.map((err) => ({
+      field: err.path[0],
+      message: err.message,
+    }));
+
+    return res.status(400).json({
+      message: "Validation error",
+      errors: formattedErrors,
+    });
+  }
+  const { name, email, password, userType } = parsed.data;
+
   try {
-    const salt = await bycrypt.genSalt(10);
-    const hashedPassword = await bycrypt.hash(req.body.password, salt);
-    const userObj = {
-      name: req.body.name,
-      email: req.body.email,
-      password: hashedPassword,
-      userType: req.body.userType || user,
-    };
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(password, salt);
     const result = await pool.query(
-      `INSERT INTO users (name, email, password, userType) 
-     VALUES ($1, $2, $3, $4) RETURNING *`,
-      [userObj.name, userObj.email, userObj.password, userObj.userType]
+      `INSERT INTO users (name, email, password, userType) VALUES ($1, $2, $3, $4) RETURNING *`,
+      [name, email, hashedPassword, userType]
     );
     return res.status(201).json({
       message: "User registered successfully",
@@ -27,11 +35,15 @@ router.post("/register", async (req, res) => {
     });
   } catch (error) {
     console.error("Error in user registration:", error);
-    res.status(500).json({ message: "Internal server error" });
+
+    if (error.code === "23505") {
+      return res.status(400).json({ message: "Email already exists" });
+    }
+
+    return res.status(500).json({ message: "Internal server error" });
   }
 });
 
-// User Login
 router.post("/login", async (req, res) => {
   try {
     const { type, email, password, refreshToken } = req.body;
@@ -43,7 +55,7 @@ router.post("/login", async (req, res) => {
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-      await handleEmailLogin({user, password, res});
+      await handleEmailLogin({ user, password, res });
     } else if (type === "refresh") {
       if (!refreshToken) {
         return res.status(401).json({ message: "Refresh token not found" });

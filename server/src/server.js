@@ -8,9 +8,10 @@ import createTables from './db/init.js';
 
 const app = express();
 
-app.use(bodyParser.json());
-app.use(cors());
+//app.use(bodyParser.json());
+
 app.use(express.json())
+app.use(cors());
 
 //db
 connectDB()
